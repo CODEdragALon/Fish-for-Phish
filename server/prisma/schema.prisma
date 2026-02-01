@@ -1,0 +1,84 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id           String         @id @default(uuid())
+  createdAt    DateTime       @default(now())
+  currentDay   Int            @default(1)
+  score        Int            @default(1000)
+  isCompleted  Boolean        @default(false)
+  emails       Email[]
+  responses    UserResponse[]
+  dailyResults DailyResult[]
+}
+
+model Email {
+  id                String        @id @default(uuid())
+  sessionId         String
+  session           Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  day               Int
+  sender            String
+  senderEmail       String
+  subject           String
+  body              String
+  timestamp         DateTime      @default(now())
+  isPhishing        Boolean
+  phishingType      String?
+  difficultyLevel   Int?
+  indicators        String?       // JSON array of indicators
+  isThreaded        Boolean       @default(false)
+  threadEmails      String?       // JSON array of thread emails
+  links             String?       // JSON array of links with display and actual URLs
+  hasAttachment     Boolean       @default(false)
+  attachmentName    String?
+  hasQrCode         Boolean       @default(false)
+  qrCodeUrl         String?
+  hasCalendarInvite Boolean       @default(false)
+  calendarDetails   String?       // JSON object with calendar details
+  headerInfo        String?       // JSON object with SPF/DKIM/DMARC info
+  response          UserResponse?
+
+  @@index([sessionId, day])
+}
+
+model UserResponse {
+  id                 String   @id @default(uuid())
+  sessionId          String
+  session            Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  emailId            String   @unique
+  email              Email    @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  reportedAsPhishing Boolean
+  selectedReasons    String?  // JSON array of selected reasons
+  isCorrect          Boolean
+  pointsEarned       Int
+  createdAt          DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+model DailyResult {
+  id             String   @id @default(uuid())
+  sessionId      String
+  session        Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  day            Int
+  totalEmails    Int
+  correctAnswers Int
+  falsePositives Int
+  falseNegatives Int
+  pointsEarned   Int
+  pointsLost     Int
+  feedback       String?  // JSON array of feedback items
+  completedAt    DateTime @default(now())
+
+  @@unique([sessionId, day])
+}
